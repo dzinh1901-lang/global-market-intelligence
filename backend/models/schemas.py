@@ -114,3 +114,92 @@ class FullMarketData(BaseModel):
     consensus: List[ConsensusResult] = []
     alerts: List[Alert] = []
     model_outputs: List[ModelOutput] = []
+
+
+# ── Agent schemas ────────────────────────────────────────────────────────────
+
+class AgentStatus(BaseModel):
+    agent: str
+    status: str  # active, idle, error
+    last_run: Optional[str] = None
+    notes: Optional[str] = None
+
+
+class AgentActivity(BaseModel):
+    id: Optional[int] = None
+    agent_name: str
+    action_type: str
+    summary: Optional[str] = None
+    details: Optional[Any] = None
+    timestamp: Optional[datetime] = None
+
+    class Config:
+        from_attributes = True
+
+
+class OrchestratorBriefing(BaseModel):
+    id: Optional[int] = None
+    content: str
+    agent_statuses: List[AgentStatus] = []
+    date: Optional[str] = None
+    timestamp: Optional[datetime] = None
+
+
+class MarketingContentItem(BaseModel):
+    id: Optional[int] = None
+    content_type: str
+    title: Optional[str] = None
+    content: str
+    asset_context: Optional[Any] = None
+    timestamp: Optional[datetime] = None
+
+
+class MarketIntelReport(BaseModel):
+    id: Optional[int] = None
+    report_type: str
+    content: str
+    assets_covered: List[str] = []
+    date: Optional[str] = None
+    timestamp: Optional[datetime] = None
+
+
+class SupportChatMessage(BaseModel):
+    role: str  # 'user' or 'assistant'
+    message: str
+    timestamp: Optional[datetime] = None
+
+
+class AnalyticsReport(BaseModel):
+    id: Optional[int] = None
+    content: str
+    metrics: Dict[str, Any] = {}
+    date: Optional[str] = None
+    timestamp: Optional[datetime] = None
+
+
+class ChatRequest(BaseModel):
+    session_id: Optional[str] = None
+    message: str
+
+
+class OnboardRequest(BaseModel):
+    name: Optional[str] = None
+    interest: Optional[str] = None
+    experience: Optional[str] = None
+
+
+class AdminQueryRequest(BaseModel):
+    query: str
+
+
+class LeadInsightRequest(BaseModel):
+    lead_context: str
+
+
+class AnomalyCheckRequest(BaseModel):
+    metrics: Dict[str, Any]
+
+
+class DeepDiveRequest(BaseModel):
+    symbol: str
+

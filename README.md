@@ -103,10 +103,62 @@ npm run dev
 
 ---
 
+## 🤖 AI Agent Team
+
+Five specialized agents run inside the backend, each with its own scheduled workflow and
+dedicated API endpoints. All agents use `gpt-5.4` via `OPENAI_API_KEY` and degrade
+gracefully when no key is present.
+
+| # | Agent | Role | Schedule |
+|---|-------|------|----------|
+| 1 | **Orchestrator** (COO) | Admin briefings, agent health, operational Q&A | Daily @ 09:00 |
+| 2 | **Marketing Director** | Market-tied social posts, lead nurture emails | Daily @ 08:30, every 2 h |
+| 3 | **Chief Analyst** | Narrative pre-market & close reports, asset deep-dives | Daily @ 07:00 & 16:30 |
+| 4 | **Customer Success** | Session-based support chat, user onboarding | Daily @ 10:00 |
+| 5 | **Analytics** | KPI reports, cross-agent activity log, anomaly detection | Daily @ 08:00, every 4 h |
+
+### Agent API Endpoints
+
+```
+GET  /api/agents/status                          # all 5 agent statuses
+GET  /api/agents/activity                        # cross-agent activity log
+
+# Orchestrator
+GET  /api/agents/orchestrator/briefing           # latest admin briefing
+POST /api/agents/orchestrator/briefing/generate  # trigger on-demand
+POST /api/agents/orchestrator/query              # {"query": "..."}
+
+# Marketing
+GET  /api/agents/marketing/content               # recent content items
+POST /api/agents/marketing/generate              # trigger teaser + nurture email
+POST /api/agents/marketing/lead-insight          # {"lead_context": "..."}
+
+# Market Intelligence
+GET  /api/agents/market-intel/narrative          # latest narrative report
+POST /api/agents/market-intel/narrative/generate # trigger on-demand
+POST /api/agents/market-intel/deep-dive          # {"symbol": "BTC"}
+
+# Customer Success
+POST /api/agents/support/chat                    # {"session_id": "...", "message": "..."}
+GET  /api/agents/support/chat/{session_id}       # chat history
+POST /api/agents/support/onboard                 # {"name":"...", "interest":"...", "experience":"..."}
+
+# Analytics
+GET  /api/agents/analytics/kpi                   # latest KPI report
+POST /api/agents/analytics/kpi/generate          # trigger on-demand
+POST /api/agents/analytics/anomaly-check         # {"metrics": {...}}
+```
+
+The agent panel is embedded directly in the dashboard UI under the Model Performance table.
+
+---
+
 ## 🚀 Deployment
 
-- **Frontend** → Vercel (`npm run build` → deploy)
-- **Backend** → Railway / Render (`uvicorn main:app --host 0.0.0.0 --port 8000`)
-
-Set `NEXT_PUBLIC_API_URL` to your deployed backend URL on Vercel.
+- **Frontend** → Vercel (`npm run build` → deploy). Set `NEXT_PUBLIC_API_URL` as an
+  environment variable pointing to your deployed backend URL.
+- **Backend** → Railway / Render (`uvicorn main:app --host 0.0.0.0 --port 8000`).
+  The backend must run as a **persistent process** — APScheduler requires a long-lived
+  instance and will not work correctly on serverless platforms (e.g. AWS Lambda, Vercel
+  serverless functions). Use a container or VM-based deployment.
 
