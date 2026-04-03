@@ -1,4 +1,4 @@
-# AIP — Agentic Multi-Model Market Intelligence Platform
+Global Market Intelligence Platform
 
 A production-ready full-stack decision-support intelligence platform that tracks real-time prices of commodities (Gold, Oil) and digital assets (BTC, ETH), runs them through multiple AI models (OpenAI, Claude, Gemini) via a debate loop, and surfaces BUY/SELL/HOLD consensus signals with confidence scores, live alerts, and daily AI-generated briefs.
 
