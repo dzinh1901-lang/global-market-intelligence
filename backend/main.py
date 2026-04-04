@@ -487,6 +487,86 @@ async def trigger_brief_generation(
     return {"status": "generating"}
 
 
+@app.get("/api/me")
+async def get_me(current_user: User = Depends(get_optional_user)):
+    """Return the currently authenticated user, or null if not authenticated."""
+    if current_user is None:
+        return {"authenticated": False, "user": None}
+    return {
+        "authenticated": True,
+        "user": {
+            "id": current_user.id,
+            "username": current_user.username,
+            "email": current_user.email,
+            "role": current_user.role,
+        },
+    }
+
+
+@app.get("/api/correlation")
+async def get_correlation(symbols: str = "BTC,ETH,GOLD,OIL", limit: int = 60):
+    """Return a pairwise Pearson correlation matrix from recent price history.
+
+    ``symbols`` is a comma-separated list of asset symbols.
+    ``limit`` controls how many recent price points to use per symbol.
+    """
+    syms = [s.strip().upper() for s in symbols.split(",") if s.strip()]
+    if len(syms) < 2:
+        raise HTTPException(status_code=400, detail="Provide at least 2 symbols")
+
+    # Fetch ordered price series for each symbol
+    prices: dict[str, list[float]] = {}
+    try:
+        async with get_db() as db:
+            for sym in syms:
+                rows = await db.fetchall(
+                    "SELECT price FROM price_data WHERE symbol = ? "
+                    "ORDER BY timestamp DESC LIMIT ?",
+                    (sym, limit),
+                )
+                if rows:
+                    prices[sym] = [r["price"] for r in reversed(rows)]
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=str(exc))
+
+    def _stats(vals: list[float]) -> tuple[float, float]:
+        """Return (mean, std_dev) for a list of floats."""
+        n = len(vals)
+        mean = sum(vals) / n
+        std = sum((v - mean) ** 2 for v in vals) ** 0.5
+        return mean, std
+
+    # Pre-compute mean and std-dev once per symbol
+    stats: dict[str, tuple[float, float]] = {}
+    for sym in available:
+        if len(prices[sym]) >= 3:
+            stats[sym] = _stats(prices[sym])
+
+    def _pearson(sym_a: str, sym_b: str) -> float | None:
+        if sym_a not in stats or sym_b not in stats:
+            return None
+        x, y = prices[sym_a], prices[sym_b]
+        n = min(len(x), len(y))
+        if n < 3:
+            return None
+        x, y = x[:n], y[:n]
+        mean_x, std_x = stats[sym_a]
+        mean_y, std_y = stats[sym_b]
+        if std_x == 0 or std_y == 0:
+            return 0.0
+        cov = sum((x[i] - mean_x) * (y[i] - mean_y) for i in range(n))
+        return round(cov / (std_x * std_y), 4)
+
+    matrix: dict[str, dict[str, float | None]] = {}
+    available = [s for s in syms if s in prices]
+    for a in available:
+        matrix[a] = {}
+        for b in available:
+            matrix[a][b] = 1.0 if a == b else _pearson(a, b)
+
+    return {"symbols": available, "matrix": matrix, "data_points": limit}
+
+
 @app.get("/api/performance")
 async def get_performance():
     return await get_all_performance()

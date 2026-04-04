@@ -8,6 +8,7 @@ import ConsensusView from './components/ConsensusView'
 import BriefPanel from './components/BriefPanel'
 import SignalBadge from './components/SignalBadge'
 import AgentsPanel from './components/AgentsPanel'
+import WatchlistPanel from './components/WatchlistPanel'
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
 
@@ -85,11 +86,13 @@ function formatNumber(n?: number, decimals = 2): string {
   return n.toFixed(decimals)
 }
 
-function TopBar({ context, lastUpdated, onRefresh, refreshing }: {
+function TopBar({ context, lastUpdated, onRefresh, refreshing, username, onSignOut }: {
   context: MarketContext | null
   lastUpdated: Date | null
   onRefresh: () => void
   refreshing: boolean
+  username: string | null
+  onSignOut: () => void
 }) {
   const sentimentLabel = (s?: number) => {
     if (s == null) return '—'
@@ -136,12 +139,26 @@ function TopBar({ context, lastUpdated, onRefresh, refreshing }: {
               Updated {lastUpdated.toLocaleTimeString()}
             </span>
           )}
-          <a
-            href="/login"
-            className="px-3 py-1.5 text-xs rounded-lg border border-[#30363d] text-gray-400 hover:border-[#58a6ff] hover:text-[#58a6ff] transition-colors"
-          >
-            Sign in
-          </a>
+          {username ? (
+            <>
+              <span className="text-xs text-gray-400 border border-[#30363d] rounded-lg px-3 py-1.5">
+                👤 {username}
+              </span>
+              <button
+                onClick={onSignOut}
+                className="px-3 py-1.5 text-xs rounded-lg border border-[#30363d] text-gray-400 hover:border-red-500/50 hover:text-red-400 transition-colors"
+              >
+                Sign out
+              </button>
+            </>
+          ) : (
+            <a
+              href="/login"
+              className="px-3 py-1.5 text-xs rounded-lg border border-[#30363d] text-gray-400 hover:border-[#58a6ff] hover:text-[#58a6ff] transition-colors"
+            >
+              Sign in
+            </a>
+          )}
           <button
             onClick={onRefresh}
             disabled={refreshing}
@@ -163,6 +180,7 @@ export default function Home() {
   const [refreshing, setRefreshing] = useState(false)
   const [briefLoading, setBriefLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [username, setUsername] = useState<string | null>(null)
   const tokenRefreshTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   // Stable ref to the schedule function so doTokenRefresh can call it without
   // creating a circular useCallback dependency.
@@ -250,6 +268,14 @@ export default function Home() {
     } catch {}
   }, [])
 
+  const handleSignOut = useCallback(() => {
+    localStorage.removeItem('aip_token')
+    localStorage.removeItem('aip_refresh_token')
+    setUsername(null)
+    if (tokenRefreshTimer.current) clearTimeout(tokenRefreshTimer.current)
+    window.location.href = '/login'
+  }, [])
+
   const handleRefresh = useCallback(async () => {
     setRefreshing(true)
     await fetch(`${API_URL}/api/refresh`, {
@@ -272,6 +298,20 @@ export default function Home() {
   }, [fetchBrief])
 
   useEffect(() => {
+    // Hydrate username from stored JWT
+    if (typeof window !== 'undefined') {
+      const token = localStorage.getItem('aip_token')
+      if (token) {
+        const exp = getTokenExpiry(token)
+        if (exp && exp * 1000 > Date.now()) {
+          try {
+            const payload = JSON.parse(atob(token.split('.')[1]))
+            if (payload.sub) setUsername(payload.sub as string)
+          } catch {}
+        }
+      }
+    }
+
     fetchData()
     fetchBrief()
     scheduleTokenRefresh()
@@ -291,6 +331,8 @@ export default function Home() {
         lastUpdated={lastUpdated}
         onRefresh={handleRefresh}
         refreshing={refreshing}
+        username={username}
+        onSignOut={handleSignOut}
       />
 
       <main className="max-w-screen-2xl mx-auto px-4 py-5 space-y-5">
@@ -345,9 +387,16 @@ export default function Home() {
               <ConsensusView consensus={consensus} />
             </div>
 
-            {/* Daily Brief */}
-            <div className="grid grid-cols-1 gap-4">
-              <div>
+            {/* Watchlist + Daily Brief */}
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+              <div className="lg:col-span-1">
+                <WatchlistPanel
+                  apiUrl={API_URL}
+                  assets={data?.assets || []}
+                  consensus={consensus}
+                />
+              </div>
+              <div className="lg:col-span-2">
                 <div className="flex items-center justify-between mb-3">
                   <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wider">
                     Daily Brief

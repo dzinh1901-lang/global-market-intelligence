@@ -19,6 +19,11 @@ interface AnalyticsPanelProps {
   symbols?: string[]
 }
 
+interface CorrelationData {
+  symbols: string[]
+  matrix: Record<string, Record<string, number | null>>
+}
+
 const COLORS: Record<string, string> = {
   BTC: '#f7931a',
   ETH: '#627eea',
@@ -35,9 +40,65 @@ function formatTimestamp(ts: string): string {
   }
 }
 
+function correlationColor(v: number | null): string {
+  if (v == null) return '#21262d'
+  if (v >= 0.7) return 'rgba(52, 211, 153, 0.55)'   // strong positive — emerald
+  if (v >= 0.3) return 'rgba(52, 211, 153, 0.25)'   // moderate positive
+  if (v > -0.3) return 'rgba(110, 118, 129, 0.20)'  // near-zero — grey
+  if (v > -0.7) return 'rgba(248, 113, 113, 0.25)'  // moderate negative
+  return 'rgba(248, 113, 113, 0.55)'                 // strong negative — red
+}
+
+function CorrelationMatrix({ correlations }: { correlations: CorrelationData }) {
+  const { symbols, matrix } = correlations
+  return (
+    <div>
+      <p className="text-xs text-gray-500 mb-2">Cross-Asset Correlation (Pearson, recent 60 data points)</p>
+      <div className="overflow-x-auto">
+        <table className="text-xs w-full">
+          <thead>
+            <tr>
+              <th className="text-gray-500 font-normal pb-1 pr-2 text-right w-12" />
+              {symbols.map(s => (
+                <th key={s} className="text-gray-400 font-semibold pb-1 px-1 text-center min-w-[52px]">{s}</th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {symbols.map(row => (
+              <tr key={row}>
+                <td className="text-gray-400 font-semibold pr-2 py-0.5 text-right">{row}</td>
+                {symbols.map(col => {
+                  const v = matrix[row]?.[col]
+                  return (
+                    <td
+                      key={col}
+                      className="text-center py-0.5 px-1 rounded font-mono"
+                      style={{ backgroundColor: correlationColor(v) }}
+                      title={v != null ? `${row} / ${col}: ${v.toFixed(3)}` : 'insufficient data'}
+                    >
+                      <span className={row === col ? 'text-gray-500' : 'text-gray-200'}>
+                        {v != null ? v.toFixed(2) : '—'}
+                      </span>
+                    </td>
+                  )
+                })}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+        <p className="text-[10px] text-gray-600 mt-2">
+          Green = positive correlation · Red = negative · Grey = near-zero
+        </p>
+      </div>
+    </div>
+  )
+}
+
 export default function AnalyticsPanel({ apiUrl, symbols = ['BTC', 'ETH', 'GOLD', 'OIL'] }: AnalyticsPanelProps) {
   const [priceHistory, setPriceHistory] = useState<Record<string, PricePoint[]>>({})
   const [activeSymbol, setActiveSymbol] = useState('BTC')
+  const [correlations, setCorrelations] = useState<CorrelationData | null>(null)
 
   useEffect(() => {
     const loadHistory = async (symbol: string) => {
@@ -51,6 +112,19 @@ export default function AnalyticsPanel({ apiUrl, symbols = ['BTC', 'ETH', 'GOLD'
     }
     symbols.forEach(loadHistory)
     const interval = setInterval(() => symbols.forEach(loadHistory), 30000)
+    return () => clearInterval(interval)
+  }, [apiUrl, symbols])
+
+  useEffect(() => {
+    const loadCorrelation = async () => {
+      try {
+        const symsParam = symbols.join(',')
+        const res = await fetch(`${apiUrl}/api/correlation?symbols=${symsParam}&limit=60`)
+        if (res.ok) setCorrelations(await res.json())
+      } catch {}
+    }
+    loadCorrelation()
+    const interval = setInterval(loadCorrelation, 60000)
     return () => clearInterval(interval)
   }, [apiUrl, symbols])
 
@@ -126,7 +200,7 @@ export default function AnalyticsPanel({ apiUrl, symbols = ['BTC', 'ETH', 'GOLD'
       </div>
 
       {/* 24h change bar chart */}
-      <div>
+      <div className="mb-6">
         <p className="text-xs text-gray-500 mb-2">24h Change (%)</p>
         <ResponsiveContainer width="100%" height={100}>
           <BarChart data={changeBarData} barSize={24}>
@@ -144,6 +218,12 @@ export default function AnalyticsPanel({ apiUrl, symbols = ['BTC', 'ETH', 'GOLD'
           </BarChart>
         </ResponsiveContainer>
       </div>
+
+      {/* Cross-asset correlation */}
+      {correlations && correlations.symbols.length >= 2 && (
+        <CorrelationMatrix correlations={correlations} />
+      )}
     </div>
   )
 }
+
