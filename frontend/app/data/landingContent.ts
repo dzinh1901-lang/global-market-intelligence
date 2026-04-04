@@ -4,8 +4,8 @@
 
 export const NAV_LINKS = [
   { label: 'Platform', href: '#capabilities' },
-  { label: 'Research Agent', href: '#methodology' },
   { label: 'Methodology', href: '#methodology' },
+  { label: 'Global Markets', href: '#global-market' },
 ] as const
 
 export interface TickerItem {

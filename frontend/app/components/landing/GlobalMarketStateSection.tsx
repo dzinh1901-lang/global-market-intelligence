@@ -148,18 +148,17 @@ export function GlobalMarketStateSection() {
                   className="absolute inset-0 w-full h-full opacity-10"
                   aria-hidden="true"
                 >
-                  {/* North America */}
-                  <path d="M80,60 L200,50 L220,80 L210,140 L180,160 L160,150 L130,170 L100,160 L80,120 Z" fill="#22d3ee" />
-                  {/* South America */}
-                  <path d="M160,180 L220,170 L240,220 L230,290 L200,310 L170,300 L155,250 Z" fill="#22d3ee" />
-                  {/* Europe */}
-                  <path d="M340,40 L420,35 L440,70 L410,100 L370,110 L340,90 Z" fill="#22d3ee" />
-                  {/* Africa */}
-                  <path d="M360,120 L440,110 L460,180 L450,260 L400,280 L350,260 L340,200 Z" fill="#22d3ee" />
-                  {/* Asia */}
-                  <path d="M440,30 L660,25 L680,80 L650,130 L560,150 L460,130 L440,90 Z" fill="#22d3ee" />
-                  {/* Australia */}
-                  <path d="M600,220 L700,210 L720,270 L680,300 L610,290 Z" fill="#22d3ee" />
+                  {/* Simplified continent outlines */}
+                  {[
+                    'M80,60 L200,50 L220,80 L210,140 L180,160 L160,150 L130,170 L100,160 L80,120 Z',
+                    'M160,180 L220,170 L240,220 L230,290 L200,310 L170,300 L155,250 Z',
+                    'M340,40 L420,35 L440,70 L410,100 L370,110 L340,90 Z',
+                    'M360,120 L440,110 L460,180 L450,260 L400,280 L350,260 L340,200 Z',
+                    'M440,30 L660,25 L680,80 L650,130 L560,150 L460,130 L440,90 Z',
+                    'M600,220 L700,210 L720,270 L680,300 L610,290 Z',
+                  ].map((d, i) => (
+                    <path key={i} d={d} fill="#22d3ee" />
+                  ))}
                 </svg>
 
                 {/* Grid overlay */}

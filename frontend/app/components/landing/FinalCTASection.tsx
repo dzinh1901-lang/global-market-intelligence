@@ -29,13 +29,14 @@ export function FinalCTASection() {
       setStep('loading')
       setErrorMsg('')
       try {
+        const trimOrUndefined = (v: string) => v.trim() || undefined
         const res = await fetch(`${API_URL}/api/agents/support/onboard`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            name: name.trim() || undefined,
-            interest: interest.trim() || undefined,
-            experience: experience.trim() || undefined,
+            name: trimOrUndefined(name),
+            interest: trimOrUndefined(interest),
+            experience: trimOrUndefined(experience),
           }),
         })
         if (!res.ok) {
